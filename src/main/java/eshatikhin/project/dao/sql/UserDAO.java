@@ -42,10 +42,6 @@ public class UserDAO implements IUserDAO {
         }
     }
     @Override
-    public List<Check> getCashierChecks(User user) throws SQLException {
-        return null;
-    }
-    @Override
     public void createUser(User user) throws SQLException {
         final String SQL = "INSERT INTO user (username, password, full_name, role_id) VALUES (?, ?, ?, ?);";
         try (Connection connection = ConnectionPool.getConnection();
@@ -62,7 +58,7 @@ public class UserDAO implements IUserDAO {
     private User GetUserFromResultSet (ResultSet rs) {
         User user = new User();
         try {
-            rs.next();
+            if (rs.isBeforeFirst()) rs.next();
             user.setId(rs.getInt(USERID));
             user.setUsername(rs.getString(USERNAME));
             user.setPassword(rs.getString(PASSWORD));

@@ -2,15 +2,25 @@ package eshatikhin.project.entities;
 
 import eshatikhin.project.entities.enums.CheckStatus;
 
-import java.util.Date;
+import java.sql.Timestamp;
 import java.util.Objects;
 
 public class Check {
     private int id;
-    private Date timestamp;
+    private Timestamp timestamp;
     private CheckStatus status;
     private double cost;
     private int cashier_id;
+
+    public Check() {
+    }
+
+    public Check(Timestamp timestamp, CheckStatus status, double cost, int cashier_id) {
+        this.timestamp = timestamp;
+        this.status = status;
+        this.cost = cost;
+        this.cashier_id = cashier_id;
+    }
 
     public int getId() {
         return id;
@@ -20,11 +30,11 @@ public class Check {
         this.id = id;
     }
 
-    public Date getTimestamp() {
+    public Timestamp getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(Date timestamp) {
+    public void setTimestamp(Timestamp timestamp) {
         this.timestamp = timestamp;
     }
 

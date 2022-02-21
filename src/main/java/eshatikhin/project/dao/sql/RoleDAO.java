@@ -46,11 +46,11 @@ public class RoleDAO implements IRoleDAO {
     private Role GetRoleFromResultSet (ResultSet rs) {
         Role role = new Role();
         try {
-            rs.next();
+            if (rs.isBeforeFirst()) rs.next();
             role.setId(rs.getInt(ROLEID));
             role.setName(rs.getString(NAME));
         } catch (SQLException e) {
-            Logger.getLogger(UserDAO.class.getName()).log(Level.SEVERE, e.getMessage());
+            Logger.getLogger(RoleDAO.class.getName()).log(Level.SEVERE, e.getMessage());
             return null;
         }
         return role;

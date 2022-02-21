@@ -10,6 +10,17 @@ public class Product implements Serializable {
     private double price;
     private float qty_instock;
 
+    public Product() {
+    }
+
+    public Product(int id, String name, float weight, double price, float qty_instock) {
+        this.id = id;
+        this.name = name;
+        this.weight = weight;
+        this.price = price;
+        this.qty_instock = qty_instock;
+    }
+
     public int getId() {
         return id;
     }
