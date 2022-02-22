@@ -1,14 +1,14 @@
 package eshatikhin.project.entities;
 
-public class CheckProducts {
+public class CheckProduct {
     private int check_id;
     private int product_id;
     private float quantity;
 
-    public CheckProducts() {
+    public CheckProduct() {
     }
 
-    public CheckProducts(int check_id, int product_id, float quantity) {
+    public CheckProduct(int check_id, int product_id, float quantity) {
         this.check_id = check_id;
         this.product_id = product_id;
         this.quantity = quantity;

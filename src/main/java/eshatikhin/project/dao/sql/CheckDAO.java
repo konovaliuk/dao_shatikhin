@@ -3,7 +3,7 @@ package eshatikhin.project.dao.sql;
 import eshatikhin.project.connection.ConnectionPool;
 import eshatikhin.project.dao.interfaces.ICheckDAO;
 import eshatikhin.project.entities.Check;
-import eshatikhin.project.entities.CheckProducts;
+import eshatikhin.project.entities.CheckProduct;
 import eshatikhin.project.entities.Product;
 import eshatikhin.project.entities.enums.CheckStatus;
 
@@ -11,19 +11,10 @@ import java.sql.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class CheckDAO implements ICheckDAO {
-    private final int CHECKID = 1;
-    private final int TIMESTAMP = 2;
-    private final int STATUS = 3;
-    private final int COST = 4;
-    private final int CASHIERID = 5;
-    private final int CHECKPRODUCT_CHECKID = 1;
-    private final int CHECKPRODUCT_PRODUCTID = 2;
-    private final int CHECKPRODUCT_QUANTITY = 3;
     @Override
     public Check getCheck(int id) throws SQLException {
         final String SQL = "SELECT * FROM `check` WHERE id = ?";
@@ -32,6 +23,22 @@ public class CheckDAO implements ICheckDAO {
         ) {
             ps.setInt(1, id);
             return GetCheckFromResultSet(ps.executeQuery());
+        }
+    }
+
+    @Override
+    public CheckProduct getCheckProduct(int check_id, int product_id) throws SQLException {
+        String SQL = "SELECT * FROM check_product WHERE check_id = ? AND product_id = ?";
+        try (Connection connection = ConnectionPool.getConnection();
+             PreparedStatement ps = connection.prepareStatement(SQL)
+        ) {
+            ps.setInt(1, check_id);
+            ps.setInt(2, product_id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return new CheckProduct(check_id, product_id, rs.getFloat(3));
+            }
+            else return null;
         }
     }
 
@@ -51,51 +58,53 @@ public class CheckDAO implements ICheckDAO {
     }
 
     @Override
+    // quantity can be negative -- that means decreasing amount of product in check
     public void checkAddProduct(int check_id, int product_id, float quantity) throws SQLException {
-        String SQL = "SELECT status FROM `check` WHERE id = ?";
-        try (Connection connection = ConnectionPool.getConnection();
-             PreparedStatement ps = connection.prepareStatement(SQL)
-        ) {
-            ps.setInt(1, check_id);
-            ResultSet rs = ps.executeQuery();
-            rs.next();
-            if (!Objects.equals(rs.getString(1), CheckStatus.OPENED.name())) {
-                throw new SQLException("Check " + check_id + " is not opened");
+        if (GetCheckStatus(check_id) != CheckStatus.OPENED) {
+            throw new SQLException("Check " + check_id + " is closed");
+        }
+        float baseQuantity = 0;
+        CheckProduct checkProduct = getCheckProduct(check_id, product_id);
+        if (checkProduct != null) baseQuantity = checkProduct.getQuantity();
+        if (baseQuantity == 0) {
+            if (quantity < 0) throw new SQLException("Can't add negative amount of products to check");
+            String SQL = "INSERT INTO check_product (check_id, product_id, quantity) VALUES (?, ?, ?)";
+            try (Connection connection = ConnectionPool.getConnection();
+                 PreparedStatement ps = connection.prepareStatement(SQL)
+            ) {
+                ps.setInt(1, check_id);
+                ps.setInt(2, product_id);
+                ps.setFloat(3, quantity);
+                ps.executeUpdate();
             }
         }
-        SQL = "SELECT * FROM check_product WHERE check_id = ? AND product_id = ?";
-        float baseQuantity = 0;
+        else {
+            float amount = baseQuantity + quantity;
+            if (amount < 0) amount = 0;
+            String SQL = "UPDATE check_product SET quantity = ? WHERE check_id = ? AND product_id = ?";
+            try (Connection connection = ConnectionPool.getConnection();
+                 PreparedStatement ps = connection.prepareStatement(SQL)
+            ) {
+                ps.setFloat(1, amount);
+                ps.setInt(2, check_id);
+                ps.setInt(3, product_id);
+                ps.executeUpdate();
+            }
+        }
+    }
+
+    @Override
+    public void checkRemoveProduct(int check_id, int product_id) throws SQLException {
+        if (GetCheckStatus(check_id) != CheckStatus.OPENED) {
+            throw new SQLException("Check " + check_id + " is closed");
+        }
+        String SQL = "DELETE FROM check_product WHERE check_id = ? AND product_id = ?";
         try (Connection connection = ConnectionPool.getConnection();
              PreparedStatement ps = connection.prepareStatement(SQL)
         ) {
             ps.setInt(1, check_id);
             ps.setInt(2, product_id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                baseQuantity = rs.getFloat(CHECKPRODUCT_QUANTITY);
-            }
-        }
-        if (baseQuantity == 0) {
-            SQL = "INSERT INTO check_product (check_id, product_id, quantity) VALUES (?, ?, ?)";
-            try (Connection connection = ConnectionPool.getConnection();
-                 PreparedStatement ps = connection.prepareStatement(SQL)
-            ) {
-                ps.setInt(CHECKPRODUCT_CHECKID, check_id);
-                ps.setInt(CHECKPRODUCT_PRODUCTID, product_id);
-                ps.setFloat(CHECKPRODUCT_QUANTITY, quantity);
-                ps.executeUpdate();
-            }
-        }
-        else {
-            SQL = "UPDATE check_product SET quantity = ? WHERE check_id = ? AND product_id = ?";
-            try (Connection connection = ConnectionPool.getConnection();
-                 PreparedStatement ps = connection.prepareStatement(SQL)
-            ) {
-                ps.setFloat(1, baseQuantity + quantity);
-                ps.setInt(2, check_id);
-                ps.setInt(3, product_id);
-                ps.executeUpdate();
-            }
+            ps.executeUpdate();
         }
     }
 
@@ -105,9 +114,9 @@ public class CheckDAO implements ICheckDAO {
         try (Connection connection = ConnectionPool.getConnection();
              PreparedStatement ps = connection.prepareStatement(SQL)
         ) {
-            List<CheckProducts> products = checkGetProducts(id);
+            List<CheckProduct> products = checkGetProducts(id);
             double total = 0;
-            for (CheckProducts checkproduct : products) {
+            for (CheckProduct checkproduct : products) {
                 ProductDAO dao = new ProductDAO();
                 Product product = dao.getProduct(checkproduct.getProduct_id());
                 total += product.getPrice() * checkproduct.getQuantity();
@@ -119,30 +128,33 @@ public class CheckDAO implements ICheckDAO {
     }
 
     @Override
-    public List<CheckProducts> checkGetProducts(int id) throws SQLException {
+    public List<CheckProduct> checkGetProducts(int id) throws SQLException {
         final String SQL = "SELECT product_id, quantity FROM check_product WHERE check_id = ?";
         try (Connection connection = ConnectionPool.getConnection();
              PreparedStatement ps = connection.prepareStatement(SQL)
         ) {
             ps.setInt(1, id);
             ResultSet result = ps.executeQuery();
-            List<CheckProducts> products = new ArrayList<CheckProducts>();
+            List<CheckProduct> products = new ArrayList<CheckProduct>();
             while(result.next()) {
-                products.add(new CheckProducts(id, result.getInt(1), result.getFloat(2)));
+                products.add(new CheckProduct(id, result.getInt(1), result.getFloat(2)));
             }
             return products;
         }
+    }
+    private CheckStatus GetCheckStatus(int check_id) throws SQLException {
+        return getCheck(check_id).getStatus();
     }
     private Check GetCheckFromResultSet (ResultSet rs) {
         Check check = new Check();
         try {
             if (rs.isBeforeFirst()) rs.next();
             //rs.next();
-            check.setId(rs.getInt(CHECKID));
-            check.setTimestamp(rs.getTimestamp(TIMESTAMP));
-            check.setStatus(CheckStatus.valueOf(rs.getString(STATUS)));
-            check.setCost(rs.getDouble(COST));
-            check.setCashier_id(rs.getInt(CASHIERID));
+            check.setId(rs.getInt(1));
+            check.setTimestamp(rs.getTimestamp(2));
+            check.setStatus(CheckStatus.valueOf(rs.getString(3)));
+            check.setCost(rs.getDouble(4));
+            check.setCashier_id(rs.getInt(5));
 
         } catch (SQLException e) {
             Logger.getLogger(CheckDAO.class.getName()).log(Level.SEVERE, e.getMessage());

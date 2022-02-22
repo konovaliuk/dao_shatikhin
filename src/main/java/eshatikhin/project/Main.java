@@ -1,16 +1,15 @@
 package eshatikhin.project;
 
+import eshatikhin.project.dao.DAOFactory;
 import eshatikhin.project.dao.sql.CheckDAO;
 import eshatikhin.project.dao.sql.ProductDAO;
 import eshatikhin.project.dao.sql.UserDAO;
 import eshatikhin.project.entities.Check;
-import eshatikhin.project.entities.CheckProducts;
+import eshatikhin.project.entities.CheckProduct;
 import eshatikhin.project.entities.Product;
 import eshatikhin.project.entities.User;
-import eshatikhin.project.entities.enums.CheckStatus;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
@@ -57,17 +56,18 @@ public class Main {
         dao.closeCheck(check_id);
         Check check = dao.getCheck(check_id);
         System.out.println("Successfully closed check (id = " + check_id + ") for total = " + check.getCost() + " hrn");
-        List<CheckProducts> checkproducts = dao.checkGetProducts(check_id);
-        for (CheckProducts checkproduct : checkproducts) {
+        List<CheckProduct> checkproducts = dao.checkGetProducts(check_id);
+        for (CheckProduct checkproduct : checkproducts) {
             Product prod = new ProductDAO().getProduct(checkproduct.getProduct_id());
             System.out.println(prod.getId() + " -- " + prod.getName() + " -- quantity: " + checkproduct.getQuantity() + " -- for " +
                     prod.getPrice() * checkproduct.getQuantity() + " hrn");
         }
     }
     public static void main(String[] args) {
-        UserDAO userDAO = new UserDAO();
-        ProductDAO productDAO = new ProductDAO();
-        CheckDAO checkDAO = new CheckDAO();
+        DAOFactory dao = new DAOFactory();
+        UserDAO userDAO = (UserDAO) dao.getUserDAO();
+        ProductDAO productDAO = (ProductDAO) dao.getProductDAO();
+        CheckDAO checkDAO = (CheckDAO) dao.getCheckDAO();
         try {
             //CreateUser(userDAO, new User("evgenius", "test", "Evgeniy Shatikhin", 4));
             //GetUserById(userDAO, 1);

@@ -16,11 +16,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class UserDAO implements IUserDAO {
-    private final int USERID = 1;
-    private final int USERNAME = 2;
-    private final int PASSWORD = 3;
-    private final int FULL_NAME = 4;
-    private final int ROLEID = 5;
     @Override
     public User getUser(int id) throws SQLException {
         final String SQL = "SELECT * FROM user WHERE id = ?";
@@ -59,11 +54,11 @@ public class UserDAO implements IUserDAO {
         User user = new User();
         try {
             if (rs.isBeforeFirst()) rs.next();
-            user.setId(rs.getInt(USERID));
-            user.setUsername(rs.getString(USERNAME));
-            user.setPassword(rs.getString(PASSWORD));
-            user.setFull_name(rs.getString(FULL_NAME));
-            user.setRole_id(rs.getInt(ROLEID));
+            user.setId(rs.getInt(1));
+            user.setUsername(rs.getString(2));
+            user.setPassword(rs.getString(3));
+            user.setFull_name(rs.getString(4));
+            user.setRole_id(rs.getInt(5));
         } catch (SQLException e) {
             Logger.getLogger(UserDAO.class.getName()).log(Level.SEVERE, e.getMessage());
             return null;
