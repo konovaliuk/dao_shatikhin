@@ -46,7 +46,7 @@ public class CheckDAO implements ICheckDAO {
     public void createCheck(Check check) throws SQLException {
         final String SQL = "INSERT INTO `check` (timestamp, status, cost, cashier_id) VALUES (?, ?, ?, ?);";
         try (Connection connection = ConnectionPool.getConnection();
-             PreparedStatement ps = connection.prepareStatement(SQL)
+             PreparedStatement ps = connection.prepareStatement(SQL, Statement.RETURN_GENERATED_KEYS)
         ) {
             if (check.getTimestamp() == null) ps.setTimestamp(1, Timestamp.from(Instant.now()));
             else ps.setTimestamp(1, check.getTimestamp());
@@ -54,6 +54,14 @@ public class CheckDAO implements ICheckDAO {
             ps.setDouble(3, check.getCost());
             ps.setInt(4, check.getCashier_id());
             ps.executeUpdate();
+            try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    check.setId(generatedKeys.getInt(1));
+                }
+                else {
+                    throw new SQLException("Creating check failed");
+                }
+            }
         }
     }
 
