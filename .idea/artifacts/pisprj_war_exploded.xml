@@ -1,0 +1,6 @@
+<component name="ArtifactManager">
+  <artifact type="exploded-war" build-on-make="true" name="pisprj:war exploded">
+    <output-path>$PROJECT_DIR$/out/artifacts/pisprj_war_exploded</output-path>
+    <root id="root" />
+  </artifact>
+</component>
